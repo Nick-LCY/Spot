@@ -51,3 +51,17 @@ Try the following command to run the script! The script accepts an argument that
 ``` Bash
 user@~/spot$ python collect_launch_time/collect.py NUM_OF_INSTANCES
 ```
+
+## Crontab
+SpotLake provides AWS data in 10 minutes interval, so I want to use the same interval to perform collection task. I write a crontab file to launch jobs at each 10 mins, check below:
+
+```Crontab
+00 * * * * cd ~/spot && python collect_launch_time/collect.py 2
+10 * * * * cd ~/spot && python collect_launch_time/collect.py 4
+20 * * * * cd ~/spot && python collect_launch_time/collect.py 6
+30 * * * * cd ~/spot && python collect_launch_time/collect.py 8
+40 * * * * cd ~/spot && python collect_launch_time/collect.py 10
+50 * * * * cd ~/spot && python collect_launch_time/collect.py 12
+```
+
+Notes: In an hour, I will launch different amounts of instances at different time.
