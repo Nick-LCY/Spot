@@ -1,13 +1,14 @@
 import pandas as pd
 import datetime
+from configs import SAMPLE_COUNT
 
 # Crontab
-# 01 00 * * * cd ~/spot && python collect_sps_and_if/daily_score.py
+# 01 00 * * * cd ~/spot && python -m collect_sps_and_if.daily_score
 
 data = pd.read_csv("collect_sps_and_if/data/init_score.csv")
 pat = r".*\.(medium|[24]{0,1}xlarge)"
 data = data.loc[data["instance"].str.match(pat)]
-data.sample(20).to_csv("collect_sps_and_if/data/potential.csv", index=False)
+data.sample(SAMPLE_COUNT).to_csv("collect_sps_and_if/data/potential.csv", index=False)
 
 yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
 
