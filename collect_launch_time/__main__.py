@@ -4,6 +4,15 @@ from dataclasses import dataclass
 from time import sleep, time
 from threading import Thread
 import pandas as pd
+from configs import TOP_K, INSTANCE_COUNT, TIMEOUT
+
+# Crontab
+# 00 * * * * cd ~/spot && python -m collect_launch_time
+# 10 * * * * cd ~/spot && python -m collect_launch_time
+# 20 * * * * cd ~/spot && python -m collect_launch_time
+# 30 * * * * cd ~/spot && python -m collect_launch_time
+# 40 * * * * cd ~/spot && python -m collect_launch_time
+# 50 * * * * cd ~/spot && python -m collect_launch_time
 
 
 @dataclass
@@ -54,8 +63,6 @@ IMAGE_ID = {
     },
 }
 DATA: Final[list[Record]] = []  # Used to store collected data
-TIMEOUT = 60 * 10  # Timeout if instances not ready after 10 minutes
-TOP_K = 10  # Top K score will be tested
 
 logging.basicConfig(level=logging.WARN)
 logger = logging.getLogger("collect_launch_time")
@@ -165,31 +172,34 @@ def record_instance_available_time(
     try:
         clear_resources(client, request_ids, instance_ids)
     except:
-        logger.warning(f"Termination of {launch_info.instance} in {launch_info.region} FAILED!")
+        logger.warning(
+            f"Termination of {launch_info.instance} in {launch_info.region} FAILED!"
+        )
 
 
-def main(instance_count: int):
+def main():
     file_name = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     threads: list[Thread] = []
-    handler = logging.FileHandler(f"collect_launch_time/log/{file_name}.log")
+    handler = logging.FileHandler(f"collect_launch_time/log/v2/{file_name}.log")
     formatter = logging.Formatter(
         "[%(levelname)s](%(asctime)s):%(message)s", datefmt="%Y-%m-%dT%H:%M:%S"
     )
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
-    score = pd.read_csv("collect_launch_time/data/score.csv")[:TOP_K]
-    write_record = record_writer(f"collect_launch_time/data/collected/{file_name}.csv")
+    yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
+    score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")[:TOP_K]
+    write_record = record_writer(f"collect_launch_time/data/v2/{file_name}.csv")
     for _, (instance, region, _) in score.iterrows():
-        logger.info(f"Try to launch {instance_count} of {instance} in {region}")
-        launch_info = LaunchInfo(region, instance, instance_count)
+        logger.info(f"Try to launch {INSTANCE_COUNT} of {instance} in {region}")
+        launch_info = LaunchInfo(region, instance, INSTANCE_COUNT)
         client = boto3.client("ec2", region_name=region)
 
         try:
             request_ids = launch_spot(client, IMAGE_ID[region][instance], launch_info)
         except Exception as e:
             logger.error(
-                f"Failed to launch {instance_count} of {instance} in {region}, "
+                f"Failed to launch {INSTANCE_COUNT} of {instance} in {region}, "
                 f"error due to: {e}",
                 exc_info=True,
             )
@@ -207,7 +217,4 @@ def main(instance_count: int):
 
 
 if __name__ == "__main__":
-    import sys
-
-    instance_count = int(sys.argv[1])
-    main(instance_count)
+    main()
