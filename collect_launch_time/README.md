@@ -21,6 +21,7 @@ To measure the value of instances/regions, I employee the [Coefficient of Variat
 user@~/spot$ python collect_launch_time/choose_instance_region.py
 ```
 This script will merge data and compute a score of instances of regions. Since large/xlarge/metal instance types are too expensive, I only count those medium/nano/small instances.
+*2024/11/13 Update: After experiment, medium/nano/small instances are not enough. Besides, I have updated the score by the data of Nov.*
 
 ## Collect Launch Time
 The idea is to send spot requests to AWS, monitor instances until they are ready, then cancel requests & delete instances. Below is the flow chart.

@@ -9,7 +9,7 @@ import os
 COV_PATH = "collect_launch_time/data/cov.csv"
 if not os.path.exists(COV_PATH):
     data = []
-    for root, dirs, files in os.walk("spot_dataset/aws/aws-2024-08"):
+    for root, dirs, files in os.walk("spot_dataset/aws/aws-2024-11"):
         for file in files:
             path = f"{root}/{file}"
             print(path)
@@ -38,7 +38,6 @@ data = pd.read_csv(COV_PATH)
 data = data.assign(score=data["sps_cov"] * data["if_cov"])
 data = data.sort_values("score", ascending=False)
 data = data.loc[data["score"] != 0]
-data = data.loc[~data["instance"].str.contains(r"(?:metal|large)")]
 data[["instance", "region", "score"]].to_csv(
     "collect_launch_time/data/score.csv", index=False
 )
