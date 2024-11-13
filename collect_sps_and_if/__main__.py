@@ -1,5 +1,6 @@
 import os
 import boto3
+import logging
 import requests
 import pandas as pd
 from typing import Final
@@ -13,6 +14,17 @@ import datetime
 # 30 * * * * cd ~/spot && python -m collect_sps_and_if
 # 40 * * * * cd ~/spot && python -m collect_sps_and_if
 # 50 * * * * cd ~/spot && python -m collect_sps_and_if
+
+logging.basicConfig(level=logging.WARN)
+logger = logging.getLogger("collect_sps_and_if")
+logger.setLevel(logging.DEBUG)
+file_name = datetime.datetime.today().strftime("%Y-%m-%d")
+handler = logging.FileHandler(f"collect_sps_and_if/log/{file_name}.log")
+formatter = logging.Formatter(
+    "[%(levelname)s](%(asctime)s):%(message)s", datefmt="%Y-%m-%dT%H:%M:%S"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
 score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")
@@ -48,25 +60,49 @@ def write(path: str, data: pd.DataFrame):
 
 
 def main():
-    resp = requests.get(IF_URL)
+    current_time = datetime.datetime.now().strftime("%H:%M")
     data = []
+    # Collect SPS
+    for region_name, instance_name in TARGETS + POTENTIALS:
+        logger.info(f"Collecting SPS of {instance_name} in {region_name}")
+        try:
+            sps_score = get_sps(instance_name, region_name)
+            data.append(
+                {
+                    "region": region_name,
+                    "instance": instance_name,
+                    "sps": sps_score,
+                    "if": -1,
+                    "hours": current_time.split(":")[0],
+                    "minutes": current_time.split(":")[1],
+                }
+            )
+        except Exception as e:
+            logger.error(
+                f"Failed to collect SPS of {instance_name} in {region_name}, "
+                f"error due to: {e}",
+                exc_info=True,
+            )
+            continue
+    data = pd.DataFrame(data)
+    # Collect IF
+    try:
+        resp = requests.get(IF_URL)
+    except Exception as e:
+        logger.error(
+            f"Failed to collect IF, error due to: {e}",
+            exc_info=True,
+        )
+        return
     for region_name, region_data in dict(resp.json()["spot_advisor"]).items():
         for instance_name, instance_data in dict(region_data["Linux"]).items():
             if (region_name, instance_name) in TARGETS + POTENTIALS:
-                print(f"Collecting {region_name}, {instance_name}")
                 if_score = instance_data["r"]
-                try:
-                    sps_score = get_sps(instance_name, region_name)
-                    data.append(
-                        {
-                            "region": region_name,
-                            "instance": instance_name,
-                            "if": if_score,
-                            "sps": sps_score,
-                        }
-                    )
-                except:
-                    continue
+                data.loc[
+                    (data["region"] == region_name)
+                    & (data["instance"] == instance_name),
+                    "if",
+                ] = if_score
     today = datetime.datetime.today().strftime("%Y-%m-%d")
     write(f"collect_sps_and_if/data/sps_and_if/{today}.csv", pd.DataFrame(data))
 
