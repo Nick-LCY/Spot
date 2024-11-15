@@ -144,6 +144,7 @@ def record_instance_available_time(
     write_record: Callable[[Record], None],
 ):
     ready_counter = 0
+    prev_ready_counter = 0
     while ready_counter != launch_info.instance_count:
         sleep(3)
 
@@ -151,15 +152,17 @@ def record_instance_available_time(
         ready_counter = count_ready_instances(client, instance_ids)
         # Record current time and number of ready instances
         now = int(time())
-        record = Record(
-            launch_info.region,
-            launch_info.instance,
-            launch_info.instance_count,
-            request_time,
-            now,
-            ready_counter,
-        )
-        write_record(record)
+        if ready_counter != prev_ready_counter:
+            prev_ready_counter = ready_counter
+            record = Record(
+                launch_info.region,
+                launch_info.instance,
+                launch_info.instance_count,
+                request_time,
+                now,
+                ready_counter,
+            )
+            write_record(record)
 
         if now - request_time > TIMEOUT:
             logger.warning(
@@ -188,7 +191,8 @@ def main():
     logger.addHandler(handler)
 
     yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
-    score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")[:TOP_K]
+    score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")
+    score = score.sort_values("score", ascending=False)[:TOP_K]
     write_record = record_writer(f"collect_launch_time/data/v2/{file_name}.csv")
     for _, (instance, region, _) in score.iterrows():
         logger.info(f"Try to launch {INSTANCE_COUNT} of {instance} in {region}")
