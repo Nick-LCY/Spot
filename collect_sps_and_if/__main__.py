@@ -32,7 +32,7 @@ potential = pd.read_csv("collect_sps_and_if/data/potential.csv")
 
 TARGETS: Final = [
     (x["region"], x["instance"])
-    for _, x in score.sort_values("score")[:TOP_K].iterrows()
+    for _, x in score.sort_values("score", ascending=False)[:TOP_K].iterrows()
 ]
 POTENTIALS: Final = [(x["region"], x["instance"]) for _, x in potential.iterrows()]
 
@@ -87,22 +87,23 @@ def main():
     data = pd.DataFrame(data)
     # Collect IF
     try:
+        logger.info("Collecting IF")
         resp = requests.get(IF_URL)
+        for region_name, region_data in dict(resp.json()["spot_advisor"]).items():
+            for instance_name, instance_data in dict(region_data["Linux"]).items():
+                if (region_name, instance_name) in TARGETS + POTENTIALS:
+                    if_score = instance_data["r"]
+                    data.loc[
+                        (data["region"] == region_name)
+                        & (data["instance"] == instance_name),
+                        "if",
+                    ] = if_score
     except Exception as e:
         logger.error(
             f"Failed to collect IF, error due to: {e}",
             exc_info=True,
         )
         return
-    for region_name, region_data in dict(resp.json()["spot_advisor"]).items():
-        for instance_name, instance_data in dict(region_data["Linux"]).items():
-            if (region_name, instance_name) in TARGETS + POTENTIALS:
-                if_score = instance_data["r"]
-                data.loc[
-                    (data["region"] == region_name)
-                    & (data["instance"] == instance_name),
-                    "if",
-                ] = if_score
     today = datetime.datetime.today().strftime("%Y-%m-%d")
     write(f"collect_sps_and_if/data/sps_and_if/{today}.csv", pd.DataFrame(data))
 
