@@ -12,16 +12,12 @@ To measure the value of instances/regions, I employee the [Coefficient of Variat
 ## Prerequisite
 * Python version == 3.11.4
 * Make sure you have checked dependencies in `requirements.txt`.
-* Dataset should be stored in `spot_dataset`, you can visit [SpotLake](https://spotlake.ddps.cloud/) for dataset.
 * You have created and configured your AWS Access Key ID/AWS Secret Access Key correctly so that `boto3` can create spot instances.
 
 ## Select Instance & Region
-[SpotLake](https://spotlake.ddps.cloud/) provides wonderful data for analyze SPS and IF, I analyze the AWS data in 2024 Aug.
-```Bash
-user@~/spot$ python collect_launch_time/choose_instance_region.py
-```
-This script will merge data and compute a score of instances of regions. Since large/xlarge/metal instance types are too expensive, I only count those medium/nano/small instances.
-*2024/11/13 Update: After experiment, medium/nano/small instances are not enough. Besides, I have updated the score by the data of Nov.*
+I collect SPS and IF by myself at 10 minutes interval. All data is stored at `collect_sps_and_if/data/sps_and_if`, each day, I will select the `TOP_K` instance and regions with the highest scores.
+
+For more details about collection of SPS and IF, please refer to [README.md](../collect_sps_and_if/README.md) under `collect_sps_and_if` folder.
 
 ## Collect Launch Time
 The idea is to send spot requests to AWS, monitor instances until they are ready, then cancel requests & delete instances. Below is the flow chart.
@@ -47,22 +43,20 @@ Then the program will repeat the following two steps:
 
 This loop will continue until timeout (10 minutes by default) or all instances are ready. After all, the progroam will cancel all spot requests([`cancel_spot_instance_requests`](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/cancel_spot_instance_requests.html)) and terminate all instances([`terminate_instances`](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/terminate_instances.html)).
 
-Try the following command to run the script! The script accepts an argument that used to specify number of instances you want to launched. Make sure you have created `collect_launch_time/data/collected` and `collect_launch_time/log` folders before running script.
+Try the following command to run the script! The script accepts an argument that used to specify number of instances you want to launched. Make sure you have created `collect_launch_time/data` and `collect_launch_time/log` folders before running script.
 
 ``` Bash
-user@~/spot$ python collect_launch_time/collect.py NUM_OF_INSTANCES
+user@~/spot$ python -m collect_launch_time
 ```
 
 ## Crontab
-SpotLake provides AWS data in 10 minutes interval, so I want to use the same interval to perform collection task. I write a crontab file to launch jobs at each 10 mins, check below:
+I collect SPS and IF in 10 minutes interval, so I want to use the same interval to perform collection task. I write a crontab file to launch jobs at each 10 mins, check below:
 
 ```Crontab
-00 * * * * cd ~/spot && python collect_launch_time/collect.py 2
-10 * * * * cd ~/spot && python collect_launch_time/collect.py 4
-20 * * * * cd ~/spot && python collect_launch_time/collect.py 6
-30 * * * * cd ~/spot && python collect_launch_time/collect.py 8
-40 * * * * cd ~/spot && python collect_launch_time/collect.py 10
-50 * * * * cd ~/spot && python collect_launch_time/collect.py 12
+00 * * * * cd ~/spot && python -m collect_launch_time
+10 * * * * cd ~/spot && python -m collect_launch_time
+20 * * * * cd ~/spot && python -m collect_launch_time
+30 * * * * cd ~/spot && python -m collect_launch_time
+40 * * * * cd ~/spot && python -m collect_launch_time
+50 * * * * cd ~/spot && python -m collect_launch_time
 ```
-
-Notes: In an hour, I will launch different amounts of instances at different time.

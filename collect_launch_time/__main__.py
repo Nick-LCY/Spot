@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from time import sleep, time
 from threading import Thread
 import pandas as pd
-from configs import TOP_K, INSTANCE_COUNT, TIMEOUT
+from configs import TOP_K, INSTANCE_COUNT, TIMEOUT, IMAGE_ID
 
 # Crontab
 # 00 * * * * cd ~/spot && python -m collect_launch_time
@@ -32,36 +32,6 @@ class Record(dict):
     ready_instances: int
 
 
-# I collect ImageId that their regions are presented in
-# collect_launch_time/data/score.csv (Top 10)
-# If you want to select image under other regions, fill them below.
-# NOTES: AMI used - Amazon Linux 2023 AMI
-IMAGE_ID = {
-    "sa-east-1": {
-        "t3.nano": "ami-0989c1b438266c944",
-        "t3.medium": "ami-0989c1b438266c944",
-        "m6gd.medium": "ami-0e7b8cab1a49f3d88",
-    },
-    "ap-northeast-3": {
-        "t4g.medium": "ami-05435b8a6f3ad2dc6",
-    },
-    "eu-north-1": {
-        "m7gd.medium": "ami-04f0be422f752077f",
-    },
-    "us-east-1": {
-        "c7gd.medium": "ami-02801556a781a4499",
-    },
-    "ap-northeast-2": {
-        "m6gd.medium": "ami-02eb6e33da0d2c404",
-        "t4g.nano": "ami-02eb6e33da0d2c404",
-    },
-    "ca-central-1": {
-        "c6gd.medium": "ami-003dc9390a1b7e12d",
-    },
-    "eu-west-3": {
-        "c6gn.medium": "ami-01c5300f289d64643",
-    },
-}
 DATA: Final[list[Record]] = []  # Used to store collected data
 
 logging.basicConfig(level=logging.WARN)
@@ -183,7 +153,7 @@ def record_instance_available_time(
 def main():
     file_name = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     threads: list[Thread] = []
-    handler = logging.FileHandler(f"collect_launch_time/log/v2/{file_name}.log")
+    handler = logging.FileHandler(f"collect_launch_time/log/{file_name}.log")
     formatter = logging.Formatter(
         "[%(levelname)s](%(asctime)s):%(message)s", datefmt="%Y-%m-%dT%H:%M:%S"
     )
@@ -193,8 +163,8 @@ def main():
     yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
     score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")
     score = score.sort_values("score", ascending=False)[:TOP_K]
-    write_record = record_writer(f"collect_launch_time/data/v2/{file_name}.csv")
-    for _, (instance, region, _) in score.iterrows():
+    write_record = record_writer(f"collect_launch_time/data/{file_name}.csv")
+    for _, (region, instance, _) in score.iterrows():
         logger.info(f"Try to launch {INSTANCE_COUNT} of {instance} in {region}")
         launch_info = LaunchInfo(region, instance, INSTANCE_COUNT)
         client = boto3.client("ec2", region_name=region)

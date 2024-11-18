@@ -6,7 +6,7 @@ import markdown
 from email.mime.text import MIMEText
 
 # Crontab
-# 23 55 * * * cd ~/spot && python -m collect_sps_and_if.daily_score
+# 55 23 * * * cd ~/spot && python -m collect_sps_and_if.daily_score
 
 
 def sample_potential():
