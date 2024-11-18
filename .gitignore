@@ -1,3 +1,6 @@
 /.vscode
 /spot_dataset
 __pycache__
+
+/crendential.txt
+/dev.py
