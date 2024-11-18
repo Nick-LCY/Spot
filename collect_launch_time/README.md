@@ -14,6 +14,9 @@ To measure the value of instances/regions, I employee the [Coefficient of Variat
 * Make sure you have checked dependencies in `requirements.txt`.
 * You have created and configured your AWS Access Key ID/AWS Secret Access Key correctly so that `boto3` can create spot instances.
 
+## File Navigation
+`__main__.py` => Collect launch time
+
 ## Select Instance & Region
 I collect SPS and IF by myself at 10 minutes interval. All data is stored at `collect_sps_and_if/data/sps_and_if`, each day, I will select the `TOP_K` instance and regions with the highest scores.
 

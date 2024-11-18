@@ -16,7 +16,9 @@
   ```
 
 ## File Navigation
-
+`__main__.py` => Collect SPS and IF
+`daily_score.py` => Compute score and send email notification
+`score_by_spotlake_data.py` => Generate initial score
 
 ## SPS
 I collect SPS with [`get_spot_placement_scores`](https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/get_spot_placement_scores.html) method. The major problem here is the anti-crawler mechanism of AWS. It only allow you to send ~50 types of SPS query request every 24 hours. And on each request, you can only get SPS of **ONE** instance among all regions. Fortunately, it seems that there is no limitation of how many requests sent of each type.
@@ -33,7 +35,7 @@ By contrast, collecting IF is way more easy. AWS provide a site to query interru
 ```
 https://spot-bid-advisor.s3.amazonaws.com/spot-advisor-data.json
 ```
-So I just collect simply request and collect them.
+So I just simply request and collect them.
 
 ## Crontab
 I collect SPS and IF in 10 minutes interval, and at the end of each day, I will compute the score based on today's data, and send an email to me for notification. The notification including those TOP_K instacnes and a warning if I don't set the AMI id of types of instace. Check the crontab jobs below:
