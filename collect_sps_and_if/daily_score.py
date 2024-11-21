@@ -57,7 +57,7 @@ def notification(to_launch: list[tuple[str, str, float]]):
     body.extend([f"+ {x[1]} in {x[0]}  " for x in alert])
     body = markdown.markdown("\n".join(body), extensions=["tables"])
     content = MIMEText(body, "html")
-    content["Subject"] = SMTP_CONFIGS.subject
+    content["Subject"] = "SPS and IF daily report"
     content["From"] = SMTP_CONFIGS.sender
     content["To"] = ", ".join(SMTP_CONFIGS.recipients)
     content["Content-Type"] = 'text/html; charset="UTF-8"'

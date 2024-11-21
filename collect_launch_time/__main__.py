@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from time import sleep, time
 from threading import Thread
 import pandas as pd
-from configs import TOP_K, INSTANCE_COUNT, TIMEOUT, IMAGE_ID
+from configs import TOP_K, INSTANCE_COUNT, TIMEOUT, get_ami
 
 # Crontab
 # 00 * * * * cd ~/spot && python -m collect_launch_time
@@ -30,6 +30,8 @@ class Record(dict):
     request_time: float
     current_time: float
     ready_instances: int
+    hours: int
+    minutes: int
 
 
 DATA: Final[list[Record]] = []  # Used to store collected data
@@ -122,6 +124,7 @@ def record_instance_available_time(
         ready_counter = count_ready_instances(client, instance_ids)
         # Record current time and number of ready instances
         now = int(time())
+        
         if ready_counter != prev_ready_counter:
             prev_ready_counter = ready_counter
             record = Record(
@@ -131,6 +134,8 @@ def record_instance_available_time(
                 request_time,
                 now,
                 ready_counter,
+                datetime.datetime.fromtimestamp(request_time).hour,
+                datetime.datetime.fromtimestamp(request_time).minute
             )
             write_record(record)
 
@@ -151,7 +156,7 @@ def record_instance_available_time(
 
 
 def main():
-    file_name = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    file_name = datetime.datetime.now().strftime("%Y-%m-%d")
     threads: list[Thread] = []
     handler = logging.FileHandler(f"collect_launch_time/log/{file_name}.log")
     formatter = logging.Formatter(
@@ -170,7 +175,7 @@ def main():
         client = boto3.client("ec2", region_name=region)
 
         try:
-            request_ids = launch_spot(client, IMAGE_ID[region][instance], launch_info)
+            request_ids = launch_spot(client, get_ami(region, instance), launch_info)
         except Exception as e:
             logger.error(
                 f"Failed to launch {INSTANCE_COUNT} of {instance} in {region}, "
