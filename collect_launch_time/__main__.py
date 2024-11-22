@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from time import sleep, time
 from threading import Thread
 import pandas as pd
-from configs import TOP_K, INSTANCE_COUNT, TIMEOUT, get_ami
+from configs import LAUNCH_TOP_K, INSTANCE_COUNT, TIMEOUT, get_ami
 
 # Crontab
 # 00 * * * * cd ~/spot && python -m collect_launch_time
@@ -167,7 +167,7 @@ def main():
 
     yesterday = (datetime.datetime.today() - datetime.timedelta(1)).strftime("%Y-%m-%d")
     score = pd.read_csv(f"collect_sps_and_if/data/score/{yesterday}.csv")
-    score = score.sort_values("score", ascending=False)[:TOP_K]
+    score = score.sort_values("score", ascending=False)[:LAUNCH_TOP_K]
     write_record = record_writer(f"collect_launch_time/data/{file_name}.csv")
     for _, (region, instance, _) in score.iterrows():
         logger.info(f"Try to launch {INSTANCE_COUNT} of {instance} in {region}")

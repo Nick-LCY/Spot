@@ -4,7 +4,7 @@ import logging
 import requests
 import pandas as pd
 from typing import Final
-from configs import TOP_K, INSTANCE_COUNT
+from configs import LAUNCH_TOP_K, INSTANCE_COUNT
 import datetime
 
 # Crontab
@@ -32,7 +32,7 @@ potential = pd.read_csv("collect_sps_and_if/data/potential.csv")
 
 TARGETS: Final = [
     (x["region"], x["instance"])
-    for _, x in score.sort_values("score", ascending=False)[:TOP_K].iterrows()
+    for _, x in score.sort_values("score", ascending=False)[:LAUNCH_TOP_K].iterrows()
 ]
 POTENTIALS: Final = [(x["region"], x["instance"]) for _, x in potential.iterrows()]
 

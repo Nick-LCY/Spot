@@ -1,9 +1,10 @@
 import pandas as pd
 import datetime
-from configs import SAMPLE_COUNT, SMTP_CONFIGS, IMAGE_ID, TOP_K
+from configs import SAMPLE_COUNT, SMTP_CONFIGS, SPS_AND_IF_TOP_K, LAUNCH_TOP_K
 import smtplib
 import markdown
 from email.mime.text import MIMEText
+from functools import reduce
 
 # Crontab
 # 55 23 * * * cd ~/spot && python -m collect_sps_and_if.daily_score
@@ -22,39 +23,38 @@ def score_today():
     today = datetime.datetime.today().strftime("%Y-%m-%d")
 
     data = pd.read_csv(f"collect_sps_and_if/data/sps_and_if/{today}.csv")
-    sps_cov = (
-        data.groupby(["region", "instance"])["sps"].agg(["mean", "std"]).reset_index()
-    )
-    sps_cov = sps_cov.assign(sps_cov=sps_cov["std"] / sps_cov["mean"]).fillna(0)
-    if_cov = (
-        data.groupby(["region", "instance"])["if"].agg(["mean", "std"]).reset_index()
-    )
-    if_cov = if_cov.assign(if_cov=if_cov["std"] / if_cov["mean"]).fillna(0)
 
-    score = if_cov.merge(sps_cov, on=["region", "instance"])
-    score = score.assign(score=score["sps_cov"] + score["if_cov"])
-    score = score[["region", "instance", "score"]]
+    def count_change(x: pd.DataFrame):
+        changes = 0
+
+        def reduce_func(prev, current):
+            nonlocal changes
+            if current != prev:
+                changes += 1
+            return current
+
+        sps_changes = reduce(reduce_func, x["sps"].tolist(), -1)
+        if_changes = reduce(reduce_func, x["if"].tolist(), -1)
+        return pd.DataFrame([{"sps_changes": sps_changes, "if_changes": if_changes}])
+
+    score = data.groupby(["region", "instance"]).apply(count_change).reset_index()
+    score = score.assign(score=score["sps_changes"] / 3 + score["if_changes"] / 5)
+    score = score[["region", "instance", "sps_changes", "if_changes", "score"]]
     score.to_csv(f"collect_sps_and_if/data/score/{today}.csv", index=False)
-    return score.sort_values("score", ascending=False)[:TOP_K]
+    return score.sort_values("score", ascending=False)[:SPS_AND_IF_TOP_K]
 
 
-def notification(to_launch: list[tuple[str, str, float]]):
-    alert = []
-    for region, insatnce, _ in to_launch:
-        if region in IMAGE_ID and insatnce in IMAGE_ID[region]:
-            continue
-        alert.append((region, insatnce))
-
+def notification(to_launch: list[tuple[str, str, float, float, float]]):
     body = []
     body.append("**Report**  ")
-    body.append("Instances to be launched in tody:")
+    body.append(
+        f"Instances to be collected in tody, top {LAUNCH_TOP_K} will be launched:"
+    )
     body.append("")
-    body.append("| Region | Instance | Score |")
-    body.append("| ------ | -------- | ----- |")
-    body.extend([f"| {x[0]} | {x[1]} | {x[2]} |" for x in to_launch])
+    body.append("| Region | Instance | SPS Chagnes | IF Changes | Score |")
+    body.append("| :----: | :------: | :---------: | :--------: | :---: |")
+    body.extend([f"| {x[0]} | {x[1]} | {x[2]} | {x[3]} | {x[4]} |" for x in to_launch])
     body.append("")
-    body.append("Following instances can't find AMI:  ")
-    body.extend([f"+ {x[1]} in {x[0]}  " for x in alert])
     body = markdown.markdown("\n".join(body), extensions=["tables"])
     content = MIMEText(body, "html")
     content["Subject"] = "SPS and IF daily report"
