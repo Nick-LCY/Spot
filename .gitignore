@@ -1,6 +1,13 @@
 /.vscode
 /spot_dataset
+/collect_pod_launch_time
+/analysis_of_launch_time
 __pycache__
+/figures
+
+/data
+/log
+/tmp
 
 /crendential.txt
 /dev.py
